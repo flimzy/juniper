@@ -27,7 +27,7 @@ func TestGetStash(t *testing.T) {
 			req: func() *http.Request {
 				stash := Stash(map[string]interface{}{"foo": "bar"})
 				req := httptest.NewRequest("GET", "/", nil)
-				ctx := context.WithValue(req.Context(), StashContextKey, stash)
+				ctx := context.WithValue(req.Context(), stashContextKey, stash)
 				return req.WithContext(ctx)
 			}(),
 			expected: map[string]interface{}{"foo": "bar"},
@@ -37,7 +37,7 @@ func TestGetStash(t *testing.T) {
 			req: func() *http.Request {
 				stash := map[string]interface{}{"foo": "bar"}
 				req := httptest.NewRequest("GET", "/", nil)
-				ctx := context.WithValue(req.Context(), StashContextKey, stash)
+				ctx := context.WithValue(req.Context(), stashContextKey, stash)
 				return req.WithContext(ctx)
 			}(),
 		},
@@ -49,5 +49,13 @@ func TestGetStash(t *testing.T) {
 				t.Error(d)
 			}
 		})
+	}
+}
+
+func TestSetStash(t *testing.T) {
+	req := httptest.NewRequest("GET", "/", nil)
+	req2 := setStash(req)
+	if stash := GetStash(req2); stash == nil {
+		t.Fatal("Stash not set")
 	}
 }
