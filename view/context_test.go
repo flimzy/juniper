@@ -23,13 +23,8 @@ func TestGetStash(t *testing.T) {
 			req:  httptest.NewRequest("GET", "/", nil),
 		},
 		{
-			name: "stash found",
-			req: func() *http.Request {
-				stash := Stash(map[string]interface{}{"foo": "bar"})
-				req := httptest.NewRequest("GET", "/", nil)
-				ctx := context.WithValue(req.Context(), stashContextKey, stash)
-				return req.WithContext(ctx)
-			}(),
+			name:     "stash found",
+			req:      stashRequest("GET", "/", nil, map[string]interface{}{"foo": "bar"}),
 			expected: map[string]interface{}{"foo": "bar"},
 		},
 		{
