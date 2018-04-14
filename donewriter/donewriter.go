@@ -26,28 +26,44 @@ import (
 	"net/http"
 )
 
-// DoneWriter is an http.ResponseWriter which tracks its write state.
-type DoneWriter struct {
+type DoneWriter interface {
 	http.ResponseWriter
-	Done bool
+	Done() bool
+}
+
+// doneWriter is an http.ResponseWriter which tracks its write state.
+type doneWriter struct {
+	http.ResponseWriter
+	done bool
+}
+
+var _ http.ResponseWriter = &doneWriter{}
+
+// New returns a new DoneWriter instance which wraps rw.
+func New(rw http.ResponseWriter) DoneWriter {
+	return &doneWriter{ResponseWriter: rw}
+}
+
+func (w *doneWriter) Done() bool {
+	return w.done
 }
 
 // WriteHeader wraps the underlying WriteHeader method.
-func (w *DoneWriter) WriteHeader(status int) {
-	w.Done = true
+func (w *doneWriter) WriteHeader(status int) {
+	w.done = true
 	w.ResponseWriter.WriteHeader(status)
 }
 
-func (w *DoneWriter) Write(b []byte) (int, error) {
-	w.Done = true
+func (w *doneWriter) Write(b []byte) (int, error) {
+	w.done = true
 	return w.ResponseWriter.Write(b)
 }
 
 // WriterIsDone returns true if a response has been written. An error is
 // returned if the underlying writer is not a DoneWriter.
 func WriterIsDone(w http.ResponseWriter) (bool, error) {
-	if dw, ok := w.(*DoneWriter); ok {
-		return dw.Done, nil
+	if dw, ok := w.(DoneWriter); ok {
+		return dw.Done(), nil
 	}
 	return false, errors.New("not a DoneWriter")
 }
@@ -57,6 +73,6 @@ func WriterIsDone(w http.ResponseWriter) (bool, error) {
 // WriterIsDone method to check the status.
 func WrapWriter(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(&DoneWriter{ResponseWriter: w}, r)
+		next.ServeHTTP(&doneWriter{ResponseWriter: w}, r)
 	})
 }
