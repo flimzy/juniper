@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/flimzy/juniper/donewriter"
+	"github.com/flimzy/juniper/httperr"
 )
 
 type view struct {
@@ -44,7 +45,15 @@ func (v *view) templateName(r *http.Request) string {
 }
 
 func (v *view) render(w http.ResponseWriter, r *http.Request) {
-
+	tmpl, err := v.getTemplate(r)
+	if err != nil {
+		httperr.HandleError(w, err)
+		return
+	}
+	if e := tmpl.Execute(w, map[string]interface{}{}); e != nil {
+		httperr.HandleError(w, err)
+		return
+	}
 }
 
 func (v *view) getTemplate(r *http.Request) (*template.Template, error) {
