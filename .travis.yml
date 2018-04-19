@@ -2,6 +2,12 @@ language: go
 go:
   - 1.10.x
   - master
+addons:
+  apt:
+    sources:
+      - sourceline: 'ppa:masterminds/glide'
+    packages:
+      - glide
 
 matrix:
   allow_failures:
@@ -11,6 +17,7 @@ notifications:
   email: false
 
 install:
+  - glide update
   - go get -u gopkg.in/alecthomas/gometalinter.v2 && gometalinter.v2 --install
 
 script:
