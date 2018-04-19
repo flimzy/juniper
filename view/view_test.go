@@ -107,8 +107,29 @@ func TestRender(t *testing.T) {
 		{
 			name:   "success",
 			view:   &view{templateDir: "../test", defTemplate: "test.tmpl"},
+			req:    setStash(httptest.NewRequest("GET", "/", nil)),
 			status: http.StatusOK,
 			body:   "Test template",
+		},
+		{
+			name: "with stash",
+			view: &view{templateDir: "../test", defTemplate: "hello.tmpl"},
+			req: func() *http.Request {
+				r := httptest.NewRequest("GET", "/", nil)
+				r = setStash(r)
+				stash := GetStash(r)
+				stash["Name"] = "Gregory"
+				return r
+			}(),
+			status: http.StatusOK,
+			body:   "Hello, Gregory!",
+		},
+		{
+			name:   "request details",
+			view:   &view{templateDir: "../test", defTemplate: "req.tmpl"},
+			req:    setStash(httptest.NewRequest("GET", "/foo/bar.html", nil)),
+			status: http.StatusOK,
+			body:   "GET /foo/bar.html from 192.0.2.1:1234",
 		},
 	}
 	for _, test := range tests {

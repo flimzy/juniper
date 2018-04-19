@@ -50,7 +50,9 @@ func (v *view) render(w http.ResponseWriter, r *http.Request) {
 		httperr.HandleError(w, err)
 		return
 	}
-	if e := tmpl.Execute(w, map[string]interface{}{}); e != nil {
+	stash := GetStash(r)
+	stash["req"] = r
+	if e := tmpl.Execute(w, stash); e != nil {
 		httperr.HandleError(w, err)
 		return
 	}
