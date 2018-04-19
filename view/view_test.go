@@ -1,10 +1,12 @@
 package view
 
 import (
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/flimzy/diff"
 	"github.com/flimzy/testy"
 )
 
@@ -82,6 +84,69 @@ func TestTemplateName(t *testing.T) {
 			result := test.view.templateName(test.req)
 			if result != test.expected {
 				t.Errorf("Unexpected result: %s", result)
+			}
+		})
+	}
+}
+
+func TestRender(t *testing.T) {
+	tests := []struct {
+		name   string
+		view   *view
+		req    *http.Request
+		status int
+		header map[string][]string
+		body   string
+	}{
+		{
+			name:   "no template defined",
+			view:   &view{templateDir: "."},
+			status: http.StatusInternalServerError,
+			body:   "Error 500: no template name provided",
+		},
+		{
+			name:   "success",
+			view:   &view{templateDir: "../test", defTemplate: "test.tmpl"},
+			req:    setStash(httptest.NewRequest("GET", "/", nil)),
+			status: http.StatusOK,
+			body:   "Test template",
+		},
+		{
+			name: "with stash",
+			view: &view{templateDir: "../test", defTemplate: "hello.tmpl"},
+			req: func() *http.Request {
+				r := httptest.NewRequest("GET", "/", nil)
+				r = setStash(r)
+				stash := GetStash(r)
+				stash["Name"] = "Gregory"
+				return r
+			}(),
+			status: http.StatusOK,
+			body:   "Hello, Gregory!",
+		},
+		{
+			name:   "request details",
+			view:   &view{templateDir: "../test", defTemplate: "req.tmpl"},
+			req:    setStash(httptest.NewRequest("GET", "/foo/bar.html", nil)),
+			status: http.StatusOK,
+			body:   "GET /foo/bar.html from 192.0.2.1:1234",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			test.view.render(rec, test.req)
+			res := rec.Result()
+			defer res.Body.Close()
+			if res.StatusCode != test.status {
+				t.Errorf("Unexpected status: %d", res.StatusCode)
+			}
+			body, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d := diff.Text(test.body, string(body)); d != nil {
+				t.Error(d)
 			}
 		})
 	}
