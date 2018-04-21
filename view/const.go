@@ -10,4 +10,7 @@ const (
 	// StashKeyTemplate is a stash key used to store the name of the template
 	// to use for rendering the request.
 	StashKeyTemplate = "_template"
+	// StashKeyStatus is a stash key which, if set to an int, defines the status
+	// code to be returned when rendering the template.
+	StashKeyStatus = "_status"
 )

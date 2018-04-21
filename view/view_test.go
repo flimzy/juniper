@@ -1,6 +1,7 @@
 package view
 
 import (
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -38,7 +39,7 @@ func TestGetTemplate(t *testing.T) {
 		},
 		{
 			name:     "success",
-			view:     &view{templateDir: "../test", defTemplate: "test.tmpl"},
+			view:     &view{templateDir: "test", defTemplate: "test.tmpl"},
 			req:      httptest.NewRequest("GET", "/", nil),
 			expected: `; defined templates are: "test.tmpl"`,
 		},
@@ -106,14 +107,14 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:   "success",
-			view:   &view{templateDir: "../test", defTemplate: "test.tmpl"},
+			view:   &view{templateDir: "test", defTemplate: "test.tmpl"},
 			req:    setStash(httptest.NewRequest("GET", "/", nil)),
 			status: http.StatusOK,
 			body:   "Test template",
 		},
 		{
 			name: "with stash",
-			view: &view{templateDir: "../test", defTemplate: "hello.tmpl"},
+			view: &view{templateDir: "test", defTemplate: "hello.tmpl"},
 			req: func() *http.Request {
 				r := httptest.NewRequest("GET", "/", nil)
 				r = setStash(r)
@@ -126,14 +127,14 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:   "request details",
-			view:   &view{templateDir: "../test", defTemplate: "req.tmpl"},
+			view:   &view{templateDir: "test", defTemplate: "req.tmpl"},
 			req:    setStash(httptest.NewRequest("GET", "/foo/bar.html", nil)),
 			status: http.StatusOK,
 			body:   "GET /foo/bar.html from 192.0.2.1:1234",
 		},
 		{
 			name: "with function",
-			view: &view{templateDir: "../test", defTemplate: "foo.tmpl",
+			view: &view{templateDir: "test", defTemplate: "foo.tmpl",
 				funcMap: map[string]interface{}{"foo": func() string { return "foo!" }},
 			},
 			req:    setStash(httptest.NewRequest("GET", "/foo/bar.html", nil)),
@@ -142,7 +143,7 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name: "with custom function",
-			view: &view{templateDir: "../test", defTemplate: "foo.tmpl",
+			view: &view{templateDir: "test", defTemplate: "foo.tmpl",
 				funcMap: map[string]interface{}{"foo": func() string { return "foo!" }},
 			},
 			req: func() *http.Request {
@@ -165,6 +166,70 @@ func TestRender(t *testing.T) {
 			defer res.Body.Close()
 			if res.StatusCode != test.status {
 				t.Errorf("Unexpected status: %d", res.StatusCode)
+			}
+			body, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d := diff.Text(test.body, string(body)); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+
+func TestMiddleware(t *testing.T) {
+	tests := []struct {
+		name       string
+		dir, templ string
+		funcMap    template.FuncMap
+		handler    http.Handler
+		req        *http.Request
+		status     int
+		body       string
+	}{
+		{
+			name: "Custom status code",
+			dir:  "test", templ: "test.tmpl",
+			handler: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				stash := GetStash(r)
+				stash[StashKeyStatus] = 600
+			}),
+			status: 600,
+			body:   "Test template",
+		},
+		{
+			name: "default status code",
+			dir:  "test", templ: "test.tmpl",
+			handler: http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+				// Do nothing
+			}),
+			status: http.StatusOK,
+			body:   "Test template",
+		},
+		{
+			name: "already written",
+			dir:  "test", templ: "test.tmpl",
+			handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(300)
+			}),
+			status: 300,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			handler := New(test.dir, test.templ, test.funcMap)(test.handler)
+			w := httptest.NewRecorder()
+			req := test.req
+			if req == nil {
+				req = httptest.NewRequest(http.MethodGet, "/", nil)
+			}
+			handler.ServeHTTP(w, req)
+			res := w.Result()
+			defer res.Body.Close()
+
+			if res.StatusCode != test.status {
+				t.Errorf("Unexpected status code: %d", res.StatusCode)
 			}
 			body, err := ioutil.ReadAll(res.Body)
 			if err != nil {
