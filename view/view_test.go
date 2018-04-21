@@ -38,7 +38,7 @@ func TestGetTemplate(t *testing.T) {
 		},
 		{
 			name:     "success",
-			view:     &view{templateDir: "../test", defTemplate: "test.tmpl"},
+			view:     &view{templateDir: "test", defTemplate: "test.tmpl"},
 			req:      httptest.NewRequest("GET", "/", nil),
 			expected: `; defined templates are: "test.tmpl"`,
 		},
@@ -106,14 +106,14 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:   "success",
-			view:   &view{templateDir: "../test", defTemplate: "test.tmpl"},
+			view:   &view{templateDir: "test", defTemplate: "test.tmpl"},
 			req:    setStash(httptest.NewRequest("GET", "/", nil)),
 			status: http.StatusOK,
 			body:   "Test template",
 		},
 		{
 			name: "with stash",
-			view: &view{templateDir: "../test", defTemplate: "hello.tmpl"},
+			view: &view{templateDir: "test", defTemplate: "hello.tmpl"},
 			req: func() *http.Request {
 				r := httptest.NewRequest("GET", "/", nil)
 				r = setStash(r)
@@ -126,14 +126,14 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:   "request details",
-			view:   &view{templateDir: "../test", defTemplate: "req.tmpl"},
+			view:   &view{templateDir: "test", defTemplate: "req.tmpl"},
 			req:    setStash(httptest.NewRequest("GET", "/foo/bar.html", nil)),
 			status: http.StatusOK,
 			body:   "GET /foo/bar.html from 192.0.2.1:1234",
 		},
 		{
 			name: "with function",
-			view: &view{templateDir: "../test", defTemplate: "foo.tmpl",
+			view: &view{templateDir: "test", defTemplate: "foo.tmpl",
 				funcMap: map[string]interface{}{"foo": func() string { return "foo!" }},
 			},
 			req:    setStash(httptest.NewRequest("GET", "/foo/bar.html", nil)),
@@ -142,7 +142,7 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name: "with custom function",
-			view: &view{templateDir: "../test", defTemplate: "foo.tmpl",
+			view: &view{templateDir: "test", defTemplate: "foo.tmpl",
 				funcMap: map[string]interface{}{"foo": func() string { return "foo!" }},
 			},
 			req: func() *http.Request {
