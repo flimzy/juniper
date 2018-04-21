@@ -38,7 +38,7 @@ func New(dir, defTemplate string, funcMap map[string]interface{}) func(http.Hand
 }
 
 func (v *view) templateName(r *http.Request) string {
-	if tmpl, ok := GetStash(r)["template"].(string); ok {
+	if tmpl, ok := GetStash(r)[StashKeyTemplate].(string); ok {
 		return tmpl
 	}
 	return v.defTemplate
