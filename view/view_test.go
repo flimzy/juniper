@@ -69,13 +69,13 @@ func TestTemplateName(t *testing.T) {
 		{
 			name:     "from stash",
 			view:     &view{defTemplate: "foo"},
-			req:      stashRequest("GET", "/", nil, map[string]interface{}{"template": "bar"}),
+			req:      stashRequest("GET", "/", nil, map[string]interface{}{StashKeyTemplate: "bar"}),
 			expected: "bar",
 		},
 		{
 			name:     "invalid stash value",
 			view:     &view{defTemplate: "foo"},
-			req:      stashRequest("GET", "/", nil, map[string]interface{}{"template": 123}),
+			req:      stashRequest("GET", "/", nil, map[string]interface{}{StashKeyTemplate: 123}),
 			expected: "foo",
 		},
 	}
