@@ -18,7 +18,7 @@ type view struct {
 }
 
 // New returns a new View middleware instance.
-func New(dir, defTemplate string, funcMap map[string]interface{}) func(http.Handler) http.Handler {
+func New(dir, defTemplate string, funcMap template.FuncMap) func(http.Handler) http.Handler {
 	v := &view{
 		templateDir: dir,
 		defTemplate: defTemplate,
@@ -64,6 +64,9 @@ func (v *view) render(w http.ResponseWriter, r *http.Request) {
 		for key, val := range fm {
 			funcMap[key] = val
 		}
+	}
+	if status, ok := stash[StashKeyStatus].(int); ok {
+		w.WriteHeader(status)
 	}
 	if e := tmpl.Funcs(funcMap).Execute(w, stash); e != nil {
 		httperr.HandleError(w, err)

@@ -1,6 +1,7 @@
 package view
 
 import (
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -165,6 +166,70 @@ func TestRender(t *testing.T) {
 			defer res.Body.Close()
 			if res.StatusCode != test.status {
 				t.Errorf("Unexpected status: %d", res.StatusCode)
+			}
+			body, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d := diff.Text(test.body, string(body)); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+
+func TestMiddleware(t *testing.T) {
+	tests := []struct {
+		name       string
+		dir, templ string
+		funcMap    template.FuncMap
+		handler    http.Handler
+		req        *http.Request
+		status     int
+		body       string
+	}{
+		{
+			name: "Custom status code",
+			dir:  "test", templ: "test.tmpl",
+			handler: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				stash := GetStash(r)
+				stash[StashKeyStatus] = 600
+			}),
+			status: 600,
+			body:   "Test template",
+		},
+		{
+			name: "default status code",
+			dir:  "test", templ: "test.tmpl",
+			handler: http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+				// Do nothing
+			}),
+			status: http.StatusOK,
+			body:   "Test template",
+		},
+		{
+			name: "already written",
+			dir:  "test", templ: "test.tmpl",
+			handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(300)
+			}),
+			status: 300,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			handler := New(test.dir, test.templ, test.funcMap)(test.handler)
+			w := httptest.NewRecorder()
+			req := test.req
+			if req == nil {
+				req = httptest.NewRequest(http.MethodGet, "/", nil)
+			}
+			handler.ServeHTTP(w, req)
+			res := w.Result()
+			defer res.Body.Close()
+
+			if res.StatusCode != test.status {
+				t.Errorf("Unexpected status code: %d", res.StatusCode)
 			}
 			body, err := ioutil.ReadAll(res.Body)
 			if err != nil {
