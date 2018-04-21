@@ -131,6 +131,31 @@ func TestRender(t *testing.T) {
 			status: http.StatusOK,
 			body:   "GET /foo/bar.html from 192.0.2.1:1234",
 		},
+		{
+			name: "with function",
+			view: &view{templateDir: "../test", defTemplate: "foo.tmpl",
+				funcMap: map[string]interface{}{"foo": func() string { return "foo!" }},
+			},
+			req:    setStash(httptest.NewRequest("GET", "/foo/bar.html", nil)),
+			status: http.StatusOK,
+			body:   "Foo? foo!",
+		},
+		{
+			name: "with custom function",
+			view: &view{templateDir: "../test", defTemplate: "foo.tmpl",
+				funcMap: map[string]interface{}{"foo": func() string { return "foo!" }},
+			},
+			req: func() *http.Request {
+				r := setStash(httptest.NewRequest("GET", "/foo/bar.html", nil))
+				stash := GetStash(r)
+				stash[StashKeyFuncMap] = map[string]interface{}{
+					"foo": func() string { return "no foo :(" },
+				}
+				return r
+			}(),
+			status: http.StatusOK,
+			body:   "Foo? no foo :(",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

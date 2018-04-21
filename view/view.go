@@ -51,8 +51,21 @@ func (v *view) render(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	stash := GetStash(r)
-	stash["req"] = r
-	if e := tmpl.Execute(w, stash); e != nil {
+	stash[StashKeyRequest] = r
+	funcMap := v.funcMap
+	if m, ok := stash[StashKeyFuncMap]; ok {
+		var fm template.FuncMap
+		switch t := m.(type) {
+		case template.FuncMap:
+			fm = t
+		case map[string]interface{}:
+			fm = t
+		}
+		for key, val := range fm {
+			funcMap[key] = val
+		}
+	}
+	if e := tmpl.Funcs(funcMap).Execute(w, stash); e != nil {
 		httperr.HandleError(w, err)
 		return
 	}
@@ -66,5 +79,5 @@ func (v *view) getTemplate(r *http.Request) (*template.Template, error) {
 	if name == "" {
 		return nil, errors.New("no template name provided")
 	}
-	return template.ParseFiles(v.templateDir + "/" + name)
+	return template.New(name).Funcs(v.funcMap).ParseFiles(v.templateDir + "/" + name)
 }
