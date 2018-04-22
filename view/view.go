@@ -73,6 +73,9 @@ func (v *view) render(w http.ResponseWriter, r *http.Request) {
 			funcMap[key] = val
 		}
 	}
+	if _, ok := w.Header()["Content-Type"]; !ok {
+		w.Header().Set("Content-Type", DefaultContentType)
+	}
 	if status, ok := stash[StashKeyStatus].(int); ok {
 		w.WriteHeader(status)
 	}
