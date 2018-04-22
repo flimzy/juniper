@@ -14,3 +14,9 @@ const (
 	// code to be returned when rendering the template.
 	StashKeyStatus = "_status"
 )
+
+const (
+	// DefaultContentType is the default Content-Type for all responses which do
+	// not already have their Content-Type header set by view rendering time.
+	DefaultContentType = "text/html; charset=utf-8"
+)

@@ -95,7 +95,7 @@ func TestRender(t *testing.T) {
 		view   *view
 		req    *http.Request
 		status int
-		header map[string][]string
+		header http.Header
 		body   string
 	}{
 		{
@@ -109,7 +109,10 @@ func TestRender(t *testing.T) {
 			view:   &view{templateDir: "test", defTemplate: "test.tmpl"},
 			req:    setStash(httptest.NewRequest("GET", "/", nil)),
 			status: http.StatusOK,
-			body:   "Test template",
+			header: http.Header{
+				"Content-Type": []string{DefaultContentType},
+			},
+			body: "Test template",
 		},
 		{
 			name: "with stash",
@@ -166,6 +169,11 @@ func TestRender(t *testing.T) {
 			if res.StatusCode != test.status {
 				t.Errorf("Unexpected status: %d", res.StatusCode)
 			}
+			if test.header != nil {
+				if d := diff.Interface(test.header, res.Header); d != nil {
+					t.Error(d)
+				}
+			}
 			body, err := ioutil.ReadAll(res.Body)
 			if err != nil {
 				t.Fatal(err)
@@ -185,10 +193,11 @@ func TestMiddleware(t *testing.T) {
 		handler    http.Handler
 		req        *http.Request
 		status     int
+		header     http.Header
 		body       string
 	}{
 		{
-			name: "Custom status code",
+			name: "custom status code",
 			dir:  "test", templ: "test.tmpl",
 			handler: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 				stash := GetStash(r)
@@ -204,7 +213,10 @@ func TestMiddleware(t *testing.T) {
 				// Do nothing
 			}),
 			status: http.StatusOK,
-			body:   "Test template",
+			header: http.Header{
+				"Content-Type": []string{DefaultContentType},
+			},
+			body: "Test template",
 		},
 		{
 			name: "already written",
@@ -213,6 +225,21 @@ func TestMiddleware(t *testing.T) {
 				w.WriteHeader(300)
 			}),
 			status: 300,
+		},
+		{
+			name: "custom headers",
+			dir:  "test", templ: "test.tmpl",
+			handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "text/plain")
+				w.Header().Set("X-Foo", "bar")
+				// Do nothing
+			}),
+			status: http.StatusOK,
+			header: http.Header{
+				"Content-Type": []string{"text/plain"},
+				"X-Foo":        []string{"bar"},
+			},
+			body: "Test template",
 		},
 	}
 	for _, test := range tests {
@@ -229,6 +256,11 @@ func TestMiddleware(t *testing.T) {
 
 			if res.StatusCode != test.status {
 				t.Errorf("Unexpected status code: %d", res.StatusCode)
+			}
+			if test.header != nil {
+				if d := diff.Interface(test.header, res.Header); d != nil {
+					t.Error(d)
+				}
 			}
 			body, err := ioutil.ReadAll(res.Body)
 			if err != nil {
