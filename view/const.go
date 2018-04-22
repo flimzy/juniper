@@ -13,6 +13,9 @@ const (
 	// StashKeyStatus is a stash key which, if set to an int, defines the status
 	// code to be returned when rendering the template.
 	StashKeyStatus = "_status"
+	// StashKeyEntryPoint is used to override the default template entry point
+	// for the given request.
+	StashKeyEntryPoint = "_entryPoint"
 )
 
 const (
