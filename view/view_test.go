@@ -1,7 +1,6 @@
 package view
 
 import (
-	"html/template"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -31,7 +30,7 @@ func TestGetTemplate(t *testing.T) {
 			view:     &view{templateDir: "."},
 			req:      httptest.NewRequest("GET", "/", nil),
 			tmplName: "oink",
-			err:      "open ./oink: no such file or directory",
+			err:      `failed to parse template "oink": open ./oink: no such file or directory`,
 		},
 		{
 			name:     "success",
@@ -159,6 +158,13 @@ func TestRender(t *testing.T) {
 			status: http.StatusOK,
 			body:   "Foo? no foo :(",
 		},
+		{
+			name:   "with includes",
+			view:   &view{templateDir: "test", defTemplate: "lib.tmpl", entryPoint: "base.tmpl", includes: []string{"test/lib"}},
+			req:    setStash(httptest.NewRequest("GET", "/", nil)),
+			status: http.StatusOK,
+			body:   "before\n\nincluded\n\nafter",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -187,18 +193,17 @@ func TestRender(t *testing.T) {
 
 func TestMiddleware(t *testing.T) {
 	tests := []struct {
-		name       string
-		dir, templ string
-		funcMap    template.FuncMap
-		handler    http.Handler
-		req        *http.Request
-		status     int
-		header     http.Header
-		body       string
+		name    string
+		conf    Config
+		handler http.Handler
+		req     *http.Request
+		status  int
+		header  http.Header
+		body    string
 	}{
 		{
 			name: "custom status code",
-			dir:  "test", templ: "test.tmpl",
+			conf: Config{TemplateDir: "test", DefaultTemplate: "test.tmpl"},
 			handler: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 				stash := GetStash(r)
 				stash[StashKeyStatus] = 600
@@ -208,7 +213,7 @@ func TestMiddleware(t *testing.T) {
 		},
 		{
 			name: "default status code",
-			dir:  "test", templ: "test.tmpl",
+			conf: Config{TemplateDir: "test", DefaultTemplate: "test.tmpl"},
 			handler: http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 				// Do nothing
 			}),
@@ -220,7 +225,7 @@ func TestMiddleware(t *testing.T) {
 		},
 		{
 			name: "already written",
-			dir:  "test", templ: "test.tmpl",
+			conf: Config{TemplateDir: "test", DefaultTemplate: "test.tmpl"},
 			handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(300)
 			}),
@@ -228,7 +233,7 @@ func TestMiddleware(t *testing.T) {
 		},
 		{
 			name: "custom headers",
-			dir:  "test", templ: "test.tmpl",
+			conf: Config{TemplateDir: "test", DefaultTemplate: "test.tmpl"},
 			handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "text/plain")
 				w.Header().Set("X-Foo", "bar")
@@ -244,7 +249,7 @@ func TestMiddleware(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			handler := New(test.dir, test.templ, test.funcMap)(test.handler)
+			handler := New(test.conf)(test.handler)
 			w := httptest.NewRecorder()
 			req := test.req
 			if req == nil {
