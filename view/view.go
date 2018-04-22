@@ -37,15 +37,23 @@ func New(dir, defTemplate string, funcMap template.FuncMap) func(http.Handler) h
 	}
 }
 
-func (v *view) templateName(r *http.Request) string {
+func (v *view) templateName(r *http.Request) (string, error) {
 	if tmpl, ok := GetStash(r)[StashKeyTemplate].(string); ok {
-		return tmpl
+		return tmpl, nil
 	}
-	return v.defTemplate
+	if v.defTemplate != "" {
+		return v.defTemplate, nil
+	}
+	return "", errors.New("no template name provided")
 }
 
 func (v *view) render(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := v.getTemplate(r)
+	tmplName, err := v.templateName(r)
+	if err != nil {
+		httperr.HandleError(w, err)
+		return
+	}
+	tmpl, err := v.getTemplate(r, tmplName)
 	if err != nil {
 		httperr.HandleError(w, err)
 		return
@@ -68,19 +76,15 @@ func (v *view) render(w http.ResponseWriter, r *http.Request) {
 	if status, ok := stash[StashKeyStatus].(int); ok {
 		w.WriteHeader(status)
 	}
-	if e := tmpl.Funcs(funcMap).Execute(w, stash); e != nil {
+	if e := tmpl.Funcs(funcMap).ExecuteTemplate(w, tmplName, stash); e != nil {
 		httperr.HandleError(w, err)
 		return
 	}
 }
 
-func (v *view) getTemplate(r *http.Request) (*template.Template, error) {
+func (v *view) getTemplate(r *http.Request, name string) (*template.Template, error) {
 	if v.templateDir == "" {
 		return nil, errors.New("template dir not defined")
-	}
-	name := v.templateName(r)
-	if name == "" {
-		return nil, errors.New("no template name provided")
 	}
 	return template.New(name).Funcs(v.funcMap).ParseFiles(v.templateDir + "/" + name)
 }

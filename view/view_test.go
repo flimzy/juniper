@@ -16,6 +16,7 @@ func TestGetTemplate(t *testing.T) {
 		name     string
 		view     *view
 		req      *http.Request
+		tmplName string
 		expected string
 		err      string
 	}{
@@ -26,27 +27,23 @@ func TestGetTemplate(t *testing.T) {
 			err:  "template dir not defined",
 		},
 		{
-			name: "no template",
-			view: &view{templateDir: "/"},
-			req:  httptest.NewRequest("GET", "/", nil),
-			err:  "no template name provided",
-		},
-		{
-			name: "file not found",
-			view: &view{templateDir: ".", defTemplate: "oink"},
-			req:  httptest.NewRequest("GET", "/", nil),
-			err:  "open ./oink: no such file or directory",
+			name:     "file not found",
+			view:     &view{templateDir: "."},
+			req:      httptest.NewRequest("GET", "/", nil),
+			tmplName: "oink",
+			err:      "open ./oink: no such file or directory",
 		},
 		{
 			name:     "success",
-			view:     &view{templateDir: "test", defTemplate: "test.tmpl"},
+			view:     &view{templateDir: "test"},
 			req:      httptest.NewRequest("GET", "/", nil),
+			tmplName: "test.tmpl",
 			expected: `; defined templates are: "test.tmpl"`,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tmpl, err := test.view.getTemplate(test.req)
+			tmpl, err := test.view.getTemplate(test.req, test.tmplName)
 			testy.Error(t, test.err, err)
 			if tmpl.DefinedTemplates() != test.expected {
 				t.Errorf("Unexpected result: %s", tmpl.DefinedTemplates())
@@ -60,6 +57,7 @@ func TestTemplateName(t *testing.T) {
 		name     string
 		view     *view
 		req      *http.Request
+		err      string
 		expected string
 	}{
 		{
@@ -82,7 +80,8 @@ func TestTemplateName(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := test.view.templateName(test.req)
+			result, err := test.view.templateName(test.req)
+			testy.Error(t, test.err, err)
 			if result != test.expected {
 				t.Errorf("Unexpected result: %s", result)
 			}
