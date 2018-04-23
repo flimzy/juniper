@@ -1,6 +1,7 @@
 package view
 
 import (
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -245,6 +246,17 @@ func TestMiddleware(t *testing.T) {
 				"X-Foo":        []string{"bar"},
 			},
 			body: "Test template",
+		},
+		{
+			name: "funcMaps",
+			conf: Config{TemplateDir: "test", DefaultTemplate: "foo.tmpl",
+				FuncMaps: []template.FuncMap{{"foo": func() string { return "FoO" }}},
+			},
+			handler: http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+				// Do nothing
+			}),
+			status: http.StatusOK,
+			body:   "Foo? FoO",
 		},
 	}
 	for _, test := range tests {
