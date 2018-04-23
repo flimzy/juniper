@@ -46,7 +46,7 @@ type Config struct {
 // dir:         The root dir where templates are to be found
 // defTemplate:
 func New(c Config) func(http.Handler) http.Handler {
-	var funcMap template.FuncMap
+	funcMap := make(template.FuncMap)
 	for _, fm := range c.FuncMaps {
 		for k, v := range fm {
 			funcMap[k] = v
