@@ -4,6 +4,7 @@ package view
 
 import (
 	"html/template"
+	"log"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -123,7 +124,8 @@ func (v *view) render(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if e := tmpl.Funcs(funcMap).ExecuteTemplate(w, entryPoint, stash); e != nil {
-		httperr.HandleError(w, err)
+		log.Printf("Template error: %s", e)
+		httperr.HandleError(w, e)
 		return
 	}
 }
