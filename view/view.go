@@ -26,9 +26,10 @@ type Config struct {
 	// DefaultTemplate is the name of the default template (to be found in
 	// TemplateDir) which will be used if stash[StashKeyTemplate] is undefined.
 	DefaultTemplate string
-	// FuncMap defines the default FuncMap to be passed when templates are
-	// parsed. This may be overwritten or augmented with stash[StashKeyFuncMap]
-	FuncMap template.FuncMap
+	// FuncMaps is zero or more function maps, which are merged before being
+	// passed when templates are parsed and executed. This may be overwritten
+	// or augmented with stash[StashKeyFuncMap]
+	FuncMaps []template.FuncMap
 	// Includes is zero or more paths to include when parsing all templates.
 	// This can be used to define global templates or components
 	Includes []string
@@ -45,11 +46,17 @@ type Config struct {
 // dir:         The root dir where templates are to be found
 // defTemplate:
 func New(c Config) func(http.Handler) http.Handler {
+	var funcMap template.FuncMap
+	for _, fm := range c.FuncMaps {
+		for k, v := range fm {
+			funcMap[k] = v
+		}
+	}
 	v := &view{
 		templateDir: c.TemplateDir,
 		entryPoint:  c.EntryPoint,
 		defTemplate: c.DefaultTemplate,
-		funcMap:     c.FuncMap,
+		funcMap:     funcMap,
 		includes:    c.Includes,
 	}
 	return func(next http.Handler) http.Handler {
